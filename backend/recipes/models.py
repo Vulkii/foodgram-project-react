@@ -77,8 +77,16 @@ class Recipe(models.Model):
         max_length=200,
     )
 
+    author = models.ForeignKey(
+        User,
+        related_name='recipes',
+        on_delete=models.SET_NULL,
+        null=True,
+        verbose_name='Автор',
+    )
+
     image = models.ImageField(
-        upload_to='reviews/images/',
+        upload_to='recipes/images/',
         verbose_name='Ссылка на картинку на сайте',
     )
 

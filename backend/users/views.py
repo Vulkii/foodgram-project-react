@@ -5,7 +5,7 @@ from api.serializers import CustomUserSerializer, SubscriptionSerializer
 from api.pagination import CustomPagination
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 
@@ -18,10 +18,24 @@ class CustomUserViewSet(UserViewSet):
     serializer_class = CustomUserSerializer
     pagination_class = CustomPagination
 
+    def get_permissions(self):
+
+        if self.action == 'subscriptions' or self.action == 'subscribe' or self.action == 'unsubscribe':
+            permission_classes = [IsAuthenticated]
+        else:
+            permission_classes = [AllowAny]
+        return [permission() for permission in permission_classes]
+
+    @action(detail=False, methods=['get'],
+            permission_classes=[IsAuthenticated])
+    def me(self, request):
+        user = request.user
+        serializer = CustomUserSerializer(user, context={'request': request})
+        return Response(serializer.data)
+
     @action(
         detail=False,
         methods=['get'],
-        permission_classes=[IsAuthenticated]
     )
     def subscriptions(self, request):
         user = request.user
@@ -35,7 +49,6 @@ class CustomUserViewSet(UserViewSet):
     @action(
         detail=True,
         methods=['post'],
-        permission_classes=[IsAuthenticated]
     )
     def subscribe(self, request, **kwargs):
         user = request.user
@@ -52,7 +65,6 @@ class CustomUserViewSet(UserViewSet):
     @action(
         detail=True,
         methods=['delete'],
-        permission_classes=[IsAuthenticated]
     )
     def unsubscribe(self, request, **kwargs):
         user = request.user

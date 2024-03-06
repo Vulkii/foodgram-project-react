@@ -153,15 +153,19 @@ class SubscriptionSerializer(CustomUserSerializer):
 
     def get_recipes(self, obj):
         request = self.context.get('request')
-        limit = request.GET.get('recipes_limit')
-        recipes = obj.recipes.all()
-        if limit:
-            recipes = recipes[:int(limit)]
-        serializer = RecipeShortSerializer(recipes, many=True, read_only=True)
+        recipe_limit = request.GET.get('recipes_limit')
+
+        if recipe_limit and recipe_limit.isdigit():
+            recipe_limit = int(recipe_limit)
+            recipes = obj.recipes.all()[:recipe_limit]
+        else:
+            recipes = obj.recipes.all()
+
+        serializer = RecipeForSubSerializer(recipes, many=True, read_only=True)
         return serializer.data
 
 
-class RecipeShortSerializer(ModelSerializer):
+class RecipeForSubSerializer(ModelSerializer):
     image = Base64ImageField()
 
     class Meta:

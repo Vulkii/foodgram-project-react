@@ -8,6 +8,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.shortcuts import get_object_or_404
 from rest_framework import status
+from django.contrib.auth.models import AnonymousUser
 
 
 User = get_user_model()
@@ -20,7 +21,8 @@ class CustomUserViewSet(UserViewSet):
 
     def get_permissions(self):
 
-        if self.action == 'subscriptions' or self.action == 'subscribe' or self.action == 'unsubscribe':
+        if (self.action == 'subscriptions'
+           or self.action == 'subscribe' or self.action == 'unsubscribe'):
             permission_classes = [IsAuthenticated]
         else:
             permission_classes = [AllowAny]
@@ -30,6 +32,12 @@ class CustomUserViewSet(UserViewSet):
             permission_classes=[IsAuthenticated])
     def me(self, request):
         user = request.user
+        if isinstance(user, AnonymousUser):
+            return Response({"error":
+                            ('You should be autorized'
+                             'to get access to this page.')},
+                            status=status.HTTP_401_UNAUTHORIZED)
+
         serializer = CustomUserSerializer(user, context={'request': request})
         return Response(serializer.data)
 
@@ -65,6 +73,7 @@ class CustomUserViewSet(UserViewSet):
     @action(
         detail=True,
         methods=['delete'],
+        permission_classes=[IsAuthenticated]
     )
     def unsubscribe(self, request, **kwargs):
         user = request.user

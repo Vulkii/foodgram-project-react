@@ -22,4 +22,5 @@ class AllowAnyOrIsAdminOrReadOnly(BasePermission):
     def has_permission(self, request, view):
         if request.method == 'POST' or 'PUT' or 'PATCH':
             return True
-        return request.method in ('GET', 'HEAD', 'OPTIONS') or request.user and request.user.is_staff
+        return (request.method in ('GET', 'HEAD', 'OPTIONS') or
+                request.user and request.user.is_staff)

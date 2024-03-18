@@ -75,7 +75,7 @@ jobs:
     - name: Install dependencies
       run: |
         cd frontend/
-        npm ci
+        npm ci --save react-tinder-card --legacy-peer-deps
 
     - name: Test frontend
       run: |

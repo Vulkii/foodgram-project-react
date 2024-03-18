@@ -9,7 +9,6 @@ from rest_framework.response import Response
 
 from api.pagination import CustomPagination
 from api.serializers import CustomUserSerializer, SubscriptionSerializer
-
 from .models import Subscription
 
 User = get_user_model()

@@ -8,7 +8,6 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet, ReadOnlyModelViewSet
-from recipes.models import Favourite, Ingredient, Recipe, ShoppingCart, Tag
 
 from .filters import TagsInRecipeFilter
 from .pagination import CustomPagination
@@ -16,6 +15,7 @@ from .permissions import (AllowAnyOrIsAdminOrReadOnly, IsAdminOrReadOnly,
                           IsAuthorOrReadOnly)
 from .serializers import (IngredientSerializer, RecipeForSubSerializer,
                           RecipeSerializer, TagSerializer)
+from recipes.models import Favourite, Ingredient, Recipe, ShoppingCart, Tag
 
 User = get_user_model()
 

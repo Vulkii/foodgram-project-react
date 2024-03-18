@@ -1,3 +1,5 @@
+from api.pagination import CustomPagination
+from api.serializers import CustomUserSerializer, SubscriptionSerializer
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AnonymousUser
 from django.shortcuts import get_object_or_404
@@ -7,8 +9,6 @@ from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
-from api.pagination import CustomPagination
-from api.serializers import CustomUserSerializer, SubscriptionSerializer
 from .models import Subscription
 
 User = get_user_model()

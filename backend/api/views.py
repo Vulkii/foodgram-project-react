@@ -81,7 +81,8 @@ class RecipeViewSet(ModelViewSet):
         author_id = self.request.query_params.get('author')
         is_in_shopping_cart = self.request.query_params.get
         ('is_in_shopping_cart', None)
-        is_favorited = self.request.query_params.get('is_favorited', None)
+        is_favorited = self.request.query_params.get('is_favorited',
+                                                     None)
 
         if author_id is not None:
             get_object_or_404(User, pk=author_id)

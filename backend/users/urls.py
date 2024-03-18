@@ -1,7 +1,7 @@
-from rest_framework.routers import DefaultRouter
 from django.urls import include, path
-from .views import CustomUserViewSet
+from rest_framework.routers import DefaultRouter
 
+from .views import CustomUserViewSet
 
 router = DefaultRouter()
 

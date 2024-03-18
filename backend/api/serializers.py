@@ -1,14 +1,15 @@
-from recipes.models import Ingredient, Tag, Recipe
-from users.models import Subscription
-from rest_framework.serializers import ModelSerializer, ImageField
-from djoser.serializers import UserCreateSerializer, UserSerializer
-from django.contrib.auth import get_user_model
-from rest_framework.fields import SerializerMethodField
 import base64
+
+from django.contrib.auth import get_user_model
 from django.core.files.base import ContentFile
-from rest_framework import serializers
-from rest_framework.exceptions import ValidationError
+from djoser.serializers import UserSerializer
 from rest_framework import status
+from rest_framework.exceptions import ValidationError
+from rest_framework.fields import SerializerMethodField
+from rest_framework.serializers import ImageField, ModelSerializer
+
+from recipes.models import Ingredient, Recipe, Tag
+from users.models import Subscription
 
 User = get_user_model()
 

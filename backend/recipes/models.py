@@ -1,6 +1,6 @@
-from django.db import models
 from django.contrib.auth import get_user_model
 from django.core.validators import MinValueValidator, RegexValidator
+from django.db import models
 from django.db.models import UniqueConstraint
 
 User = get_user_model()
@@ -37,7 +37,7 @@ class Tag(models.Model):
                 message='В введенном тексте есть запрещенные символы!'
             )
         ]
-        )
+    )
 
     class Meta:
         verbose_name = 'Тег'

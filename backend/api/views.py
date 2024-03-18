@@ -4,30 +4,19 @@ from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import status
 from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet, ReadOnlyModelViewSet
-from rest_framework.exceptions import ValidationError
+
+from recipes.models import Favourite, Ingredient, Recipe, ShoppingCart, Tag
 
 from .filters import TagsInRecipeFilter
 from .pagination import CustomPagination
-from .permissions import (
-    AllowAnyOrIsAdminOrReadOnly,
-    IsAdminOrReadOnly,
-    IsAuthorOrReadOnly,
-)
-from .serializers import (
-    IngredientSerializer,
-    RecipeForSubSerializer,
-    RecipeSerializer,
-    TagSerializer,
-)
-from recipes.models import (
-    Tag,
-    Ingredient,
-    Recipe,
-    ShoppingCart,
-    Favourite)
+from .permissions import (AllowAnyOrIsAdminOrReadOnly, IsAdminOrReadOnly,
+                          IsAuthorOrReadOnly)
+from .serializers import (IngredientSerializer, RecipeForSubSerializer,
+                          RecipeSerializer, TagSerializer)
 
 User = get_user_model()
 
@@ -91,8 +80,8 @@ class RecipeViewSet(ModelViewSet):
     def get_queryset(self):
         queryset = super().get_queryset()
         author_id = self.request.query_params.get('author')
-        is_in_shopping_cart = self.request.query_params.get(
-                              'is_in_shopping_cart', None)
+        is_in_shopping_cart = self.request.query_params.get
+        ('is_in_shopping_cart', None)
         is_favorited = self.request.query_params.get('is_favorited', None)
 
         if author_id is not None:
@@ -220,9 +209,9 @@ class RecipeViewSet(ModelViewSet):
 
         ingredients_ids = []
         for ingredient in ingredients_data:
-            if ('id' in ingredient and
-                'amount' in ingredient and
-                    ingredient['amount'] > 0):
+            if ('id' in ingredient
+                and 'amount' in ingredient
+                    and ingredient['amount'] > 0):
                 ingredients_ids.append(ingredient.get('id'))
             else:
                 return Response({'error':
@@ -278,8 +267,8 @@ class RecipeViewSet(ModelViewSet):
 
         ingredients_ids = []
         for ingredient in ingredients_data:
-            if ('id' in ingredient and 'amount' in ingredient and
-               ingredient['amount'] > 0):
+            if ('id' in ingredient and 'amount' in ingredient
+                    and ingredient['amount'] > 0):
                 ingredients_ids.append(ingredient.get('id'))
             else:
                 return Response({'error':
@@ -311,8 +300,8 @@ class RecipeViewSet(ModelViewSet):
                             status=status.HTTP_400_BAD_REQUEST)
 
         if not all(
-                  Tag.objects.filter(id=tag_id).exists() for tag_id
-                  in tags_data):
+                Tag.objects.filter(id=tag_id).exists() for tag_id
+                in tags_data):
             return Response({'error': 'One or more tags do not exist'},
                             status=status.HTTP_400_BAD_REQUEST)
 

@@ -126,7 +126,7 @@ class RecipeViewSet(ModelViewSet):
                             status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=True, methods=['delete'],
-            permission_classes=[IsAuthorOrReadOnly | IsAdminOrReadOnly,])
+            permission_classes=[IsAuthorOrReadOnly | IsAdminOrReadOnly])
     def remove_from_shopping_cart(self, request, pk=None):
         recipe = get_object_or_404(Recipe, id=pk)
         try:

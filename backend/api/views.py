@@ -89,18 +89,18 @@ class RecipeViewSet(ModelViewSet):
             queryset = queryset.filter(author_id=author_id)
         if self.request.user.is_authenticated:
             if is_in_shopping_cart is not None:
-                if is_in_shopping_cart.lower() == '1':
+                if is_in_shopping_cart == '1':
                     queryset = queryset.filter(
                         shopping_cart__user=self.request.user)
-                elif is_in_shopping_cart.lower() == '0':
+                elif is_in_shopping_cart == '0':
                     queryset = queryset.exclude(
                         shopping_cart__user=self.request.user)
 
             if is_favorited is not None:
-                if is_favorited.lower() == '1':
+                if is_favorited == '1':
                     queryset = queryset.filter(
                         favorites__user=self.request.user)
-                elif is_favorited.lower() == '0':
+                elif is_favorited == '0':
                     queryset = queryset.exclude(
                         favorites__user=self.request.user)
         return queryset

@@ -211,7 +211,7 @@ class RecipeViewSet(ModelViewSet):
         for ingredient in ingredients_data:
             if ('id' in ingredient
                 and 'amount' in ingredient
-                    and ingredient['amount'] > 0):
+                    and int(ingredient['amount']) > 0):
                 ingredients_ids.append(ingredient.get('id'))
             else:
                 return Response({'error':
@@ -268,7 +268,7 @@ class RecipeViewSet(ModelViewSet):
         ingredients_ids = []
         for ingredient in ingredients_data:
             if ('id' in ingredient and 'amount' in ingredient
-                    and ingredient['amount'] > 0):
+                    and int(ingredient['amount']) > 0):
                 ingredients_ids.append(ingredient.get('id'))
             else:
                 return Response({'error':

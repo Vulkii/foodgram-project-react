@@ -1,14 +1,16 @@
 import base64
 
 from django.contrib.auth import get_user_model
+from django.shortcuts import get_object_or_404
 from django.core.files.base import ContentFile
 from djoser.serializers import UserSerializer
-from recipes.models import Ingredient, Recipe, Tag
 from rest_framework import status
 from rest_framework.exceptions import ValidationError
 from rest_framework.fields import SerializerMethodField
 from rest_framework.serializers import ImageField, ModelSerializer
+
 from users.models import Subscription
+from recipes.models import Ingredient, Recipe, Tag, IngredientInRecipe
 
 User = get_user_model()
 
@@ -25,7 +27,7 @@ class TagSerializer(ModelSerializer):
         fields = '__all__'
 
 
-class CustomUserSerializer(UserSerializer):
+class UserSerializer(UserSerializer):
     is_subscribed = SerializerMethodField(read_only=True)
 
     class Meta:
@@ -49,7 +51,7 @@ class CustomUserSerializer(UserSerializer):
             return False
 
 
-class CustomUserCreateSerializer(ModelSerializer):
+class UserCreateSerializer(ModelSerializer):
     class Meta:
         model = User
         fields = ('email', 'username', 'first_name', 'last_name', 'password')
@@ -77,7 +79,7 @@ class Base64ImageField(ImageField):
 
 class RecipeSerializer(ModelSerializer):
     tags = TagSerializer(many=True, read_only=True)
-    author = CustomUserSerializer(read_only=True)
+    author = UserSerializer(read_only=True)
     ingredients = SerializerMethodField()
     image = Base64ImageField()
     is_favorited = SerializerMethodField(read_only=True)
@@ -98,6 +100,48 @@ class RecipeSerializer(ModelSerializer):
             'cooking_time',
         )
 
+    def validate(self, data):
+        tags_data = self.initial_data.get('tags')
+        ingredients_data = self.initial_data.get('ingredients')
+
+        if not tags_data:
+            raise ValidationError({'tags':
+                                   'At least one tag must be provided.'})
+
+        if len(tags_data) != len(set(tags_data)):
+            raise ValidationError({'tags': 'Tags must be unique.'})
+
+        if not all(Tag.objects.filter(id=tag_id).exists()
+                   for tag_id in tags_data):
+            raise ValidationError({'tags': 'One or more tags do not exist.'})
+
+        if not ingredients_data:
+            raise ValidationError({'ingredients':
+                                   'At least one ingredient must be provided.'})
+
+        ingredient_ids = [ingredient.get('id')
+                          for ingredient in ingredients_data if 'id'
+                          in ingredient and 'amount' in ingredient]
+        if len(ingredient_ids) != len(set(ingredient_ids)):
+            raise ValidationError({'ingredients': 'Ingredients must be unique.'})
+
+        for ingredient in ingredients_data:
+            if 'id' not in ingredient or 'amount' not in ingredient:
+                raise ValidationError({
+                    'ingredients':
+                    'Each ingredient must have an id and an amount.'})
+            if int(ingredient['amount']) <= 0:
+                raise ValidationError({
+                    'ingredients':
+                    'The amount for each ingredient must be greater than zero.'})
+
+        if (Ingredient.objects.filter(id__in=ingredient_ids).count()
+           != len(ingredient_ids)):
+            raise ValidationError({'ingredients':
+                                   'One or more ingredients do not exist.'})
+
+        return data
+
     def get_ingredients(self, obj):
         ingredients_data = []
         for ingredient_relation in obj.ingredient_list.all():
@@ -114,23 +158,47 @@ class RecipeSerializer(ModelSerializer):
         user = self.context.get('request').user
         if user.is_anonymous:
             return False
-        return user.favorites.filter(recipe=obj).exists()
+        return user.favourite_related.filter(recipe=obj).exists()
 
     def get_is_in_shopping_cart(self, obj):
         user = self.context.get('request').user
         if user.is_anonymous:
             return False
-        return user.shopping_cart.filter(recipe=obj).exists()
+        return user.shoppingcart_related.filter(recipe=obj).exists()
+
+    def create(self, validated_data):
+        tags_data = self.context['request'].data.get('tags')
+        ingredients_data = self.context['request'].data.get('ingredients', [])
+
+        recipe = Recipe.objects.create(**validated_data)
+
+        if tags_data:
+            tags = Tag.objects.filter(id__in=tags_data)
+            recipe.tags.set(tags)
+
+        if ingredients_data:
+            for ingredient_data in ingredients_data:
+                ingredient_id = ingredient_data.get('id')
+                amount = ingredient_data.get('amount')
+                ingredient = get_object_or_404(Ingredient, id=ingredient_id)
+                IngredientInRecipe.objects.create(
+                    recipe=recipe,
+                    ingredient=ingredient,
+                    amount=amount
+                )
+
+        recipe.save()
+        return recipe
 
 
-class SubscriptionSerializer(CustomUserSerializer):
+class SubscriptionSerializer(UserSerializer):
     recipes_count = SerializerMethodField()
     recipes = SerializerMethodField()
 
-    class Meta(CustomUserSerializer.Meta):
+    class Meta(UserSerializer.Meta):
         model = User
-        fields = CustomUserSerializer.Meta.fields + ('recipes_count',
-                                                     'recipes',)
+        fields = UserSerializer.Meta.fields + ('recipes_count',
+                                               'recipes',)
         read_only_fields = ('email', 'username')
 
     def validate(self, data):

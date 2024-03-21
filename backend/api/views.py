@@ -2,7 +2,6 @@ from django.contrib.auth import get_user_model
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
-from recipes.models import Favourite, Ingredient, Recipe, ShoppingCart, Tag
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
@@ -10,12 +9,13 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet, ReadOnlyModelViewSet
 
-from .filters import TagsInRecipeFilter
-from .pagination import CustomPagination
+from .filters import TagsInRecipeFilter, IngredientFilter
+from .pagination import Pagination
 from .permissions import (AllowAnyOrIsAdminOrReadOnly, IsAdminOrReadOnly,
                           IsAuthorOrReadOnly)
 from .serializers import (IngredientSerializer, RecipeForSubSerializer,
                           RecipeSerializer, TagSerializer)
+from recipes.models import Favourite, Ingredient, Recipe, ShoppingCart, Tag
 
 User = get_user_model()
 
@@ -31,82 +31,63 @@ class TagViewSet(ReadOnlyModelViewSet):
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
 
-    def create(self, request, *args, **kwargs):
-        return Response({"detail": "Method Not Allowed"},
-                        status=status.HTTP_405_METHOD_NOT_ALLOWED)
-
-    def update(self, request, *args, **kwargs):
-        return Response({"detail": "Method Not Allowed"},
-                        status=status.HTTP_405_METHOD_NOT_ALLOWED)
-
-    def partial_update(self, request, *args, **kwargs):
-        return Response({"detail": "Method Not Allowed"},
-                        status=status.HTTP_405_METHOD_NOT_ALLOWED)
-
 
 class IngredientViewSet(ReadOnlyModelViewSet):
     queryset = Ingredient.objects.all()
     serializer_class = IngredientSerializer
     permission_classes = (AllowAnyOrIsAdminOrReadOnly,)
+    filter_backends = (DjangoFilterBackend,)
+    filterset_class = IngredientFilter
 
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
-
         serializer = self.get_serializer(queryset, many=True)
+
         return Response(serializer.data)
-
-    def create(self, request, *args, **kwargs):
-        return Response({"detail": "Method Not Allowed"},
-                        status=status.HTTP_405_METHOD_NOT_ALLOWED)
-
-    def update(self, request, *args, **kwargs):
-        return Response({"detail": "Method Not Allowed"},
-                        status=status.HTTP_405_METHOD_NOT_ALLOWED)
-
-    def partial_update(self, request, *args, **kwargs):
-        return Response({"detail": "Method Not Allowed"},
-                        status=status.HTTP_405_METHOD_NOT_ALLOWED)
 
 
 class RecipeViewSet(ModelViewSet):
     queryset = Recipe.objects.all()
     permission_classes = (IsAuthorOrReadOnly | IsAdminOrReadOnly,)
     serializer_class = RecipeSerializer
-    pagination_class = CustomPagination
+    pagination_class = Pagination
     filter_backends = (DjangoFilterBackend,)
     filterset_class = TagsInRecipeFilter
 
     def get_queryset(self):
-        queryset = super().get_queryset()
-        author_id = self.request.query_params.get('author')
-        is_in_shopping_cart = self.request.query_params.get
-        ('is_in_shopping_cart', None)
-        is_favorited = self.request.query_params.get('is_favorited',
-                                                     None)
+        return super().get_queryset()
 
-        if author_id is not None:
-            get_object_or_404(User, pk=author_id)
-            queryset = queryset.filter(author_id=author_id)
-        if self.request.user.is_authenticated:
-            if is_in_shopping_cart is not None:
-                if is_in_shopping_cart == '1':
-                    queryset = queryset.filter(
-                        shopping_cart__user=self.request.user)
-                elif is_in_shopping_cart == '0':
-                    queryset = queryset.exclude(
-                        shopping_cart__user=self.request.user)
+    def destroy(self, request, *args, **kwargs):
+        if not (Recipe.objects.filter(author=request.user).exists()
+                and not request.user.is_staff):
+            return Response({
+                'detail':
+                'You do not have permission to perform this action'},
+                status=status.HTTP_403_FORBIDDEN)
 
-            if is_favorited is not None:
-                if is_favorited == '1':
-                    queryset = queryset.filter(
-                        favorites__user=self.request.user)
-                elif is_favorited == '0':
-                    queryset = queryset.exclude(
-                        favorites__user=self.request.user)
-        return queryset
+        recipe = get_object_or_404(Recipe, pk=kwargs.get('pk'))
+
+        if not (recipe.author == request.user or request.user.is_staff):
+            return Response({
+                'detail':
+                'You do not have permission to perform this action'},
+                status=status.HTTP_403_FORBIDDEN)
+
+        return super().destroy(request, *args, **kwargs)
 
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
+
+    def update(self, request, *args, **kwargs):
+        recipe = self.get_object()
+
+        if not (recipe.author == request.user or request.user.is_staff):
+            return Response({
+                'detail':
+                'You do not have permission to perform this action'},
+                status=status.HTTP_403_FORBIDDEN)
+
+        return super().update(request, *args, **kwargs)
 
     @action(detail=True, methods=['post'],
             permission_classes=[IsAuthenticated])
@@ -125,8 +106,7 @@ class RecipeViewSet(ModelViewSet):
             return Response({'status': 'The recipe already in shopping cart'},
                             status=status.HTTP_400_BAD_REQUEST)
 
-    @action(detail=True, methods=['delete'],
-            permission_classes=[IsAuthorOrReadOnly | IsAdminOrReadOnly])
+    @shopping_cart.mapping.delete
     def remove_from_shopping_cart(self, request, pk=None):
         recipe = get_object_or_404(Recipe, id=pk)
         try:
@@ -190,8 +170,7 @@ class RecipeViewSet(ModelViewSet):
             return Response({'detail': 'Recipe is already in favorites'},
                             status=status.HTTP_400_BAD_REQUEST)
 
-    @action(detail=True, methods=['delete'],
-            permission_classes=[IsAuthenticated])
+    @favorite.mapping.delete
     def unfavorite(self, request, pk=None):
         recipe = get_object_or_404(Recipe, pk=pk)
         user = request.user
@@ -201,108 +180,4 @@ class RecipeViewSet(ModelViewSet):
             return Response(status=status.HTTP_204_NO_CONTENT)
         else:
             return Response({'detail': 'The recipe is not in favorites'},
-                            status=status.HTTP_404_NOT_FOUND)
-
-    def create(self, request, *args, **kwargs):
-        ingredients_data = request.data.get('ingredients', [])
-        tags_data = request.data.get('tags', [])
-
-        ingredients_ids = []
-        for ingredient in ingredients_data:
-            if ('id' in ingredient
-                and 'amount' in ingredient
-                    and int(ingredient['amount']) > 0):
-                ingredients_ids.append(ingredient.get('id'))
-            else:
-                return Response({'error':
-                                ('Each ingredient must have'
-                                 'a valid id and amount must'
-                                 'be greater than 0')},
-                                status=status.HTTP_400_BAD_REQUEST)
-
-        if not ingredients_data or not ingredients_ids:
-            return Response({'error': ('At least two'
-                                       'ingredients must be provided'
-                                       'and must be valid')},
                             status=status.HTTP_400_BAD_REQUEST)
-
-        if not tags_data:
-            return Response({'error':
-                            ('At least one tag must be provided'
-                             'and must be valid.')},
-                            status=status.HTTP_400_BAD_REQUEST)
-
-        if len(ingredients_ids) != len(set(ingredients_ids)):
-            return Response({'error': 'Ingredients must be unique'},
-                            status=status.HTTP_400_BAD_REQUEST)
-
-        if len(tags_data) != len(set(tags_data)):
-            return Response({'error': 'Tags must be unique'},
-                            status=status.HTTP_400_BAD_REQUEST)
-
-        if (Ingredient.objects.filter(id__in=ingredients_ids).count()
-           != len(set(ingredients_ids))):
-            return Response({'error': 'One or more ingredients do not exist'},
-                            status=status.HTTP_400_BAD_REQUEST)
-
-        if not all(
-                Tag.objects.filter(id=tag_id).exists() for tag_id
-                in tags_data):
-            return Response({'error': 'One or more tags do not exist'},
-                            status=status.HTTP_400_BAD_REQUEST)
-
-        return super().create(request, *args, **kwargs)
-
-    def update(self, request, *args, **kwargs):
-        recipe = self.get_object()
-
-        if recipe.author != request.user:
-            return Response({'detail':
-                             ('You do not have permission'
-                              'to perform this action')},
-                            status=status.HTTP_403_FORBIDDEN)
-
-        ingredients_data = request.data.get('ingredients', [])
-        tags_data = request.data.get('tags', [])
-
-        ingredients_ids = []
-        for ingredient in ingredients_data:
-            if ('id' in ingredient and 'amount' in ingredient
-                    and int(ingredient['amount']) > 0):
-                ingredients_ids.append(ingredient.get('id'))
-            else:
-                return Response({'error':
-                                ('Each ingredient must have a valid'
-                                 'id and amount must be greater than 0')},
-                                status=status.HTTP_400_BAD_REQUEST)
-
-        if ingredients_data is None or tags_data is None:
-            return Response({'error':
-                            'Fields ingredients and tags are required'},
-                            status=status.HTTP_400_BAD_REQUEST)
-
-        if not ingredients_data or not tags_data:
-            return Response({'error':
-                             'ingredients and tags fields cannot be empty'},
-                            status=status.HTTP_400_BAD_REQUEST)
-
-        if len(ingredients_ids) != len(set(ingredients_ids)):
-            return Response({'error': 'Ingredients must be unique'},
-                            status=status.HTTP_400_BAD_REQUEST)
-
-        if len(tags_data) != len(set(tags_data)):
-            return Response({'error': 'Tags must be unique'},
-                            status=status.HTTP_400_BAD_REQUEST)
-
-        if (Ingredient.objects.filter(id__in=ingredients_ids).count()
-           != len(set(ingredients_ids))):
-            return Response({'error': 'One or more ingredients do not exist'},
-                            status=status.HTTP_400_BAD_REQUEST)
-
-        if not all(
-                Tag.objects.filter(id=tag_id).exists() for tag_id
-                in tags_data):
-            return Response({'error': 'One or more tags do not exist'},
-                            status=status.HTTP_400_BAD_REQUEST)
-
-        return super().update(request, *args, **kwargs)

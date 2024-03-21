@@ -1,5 +1,3 @@
-from api.pagination import CustomPagination
-from api.serializers import CustomUserSerializer, SubscriptionSerializer
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AnonymousUser
 from django.shortcuts import get_object_or_404
@@ -10,23 +8,17 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
 from .models import Subscription
+from api.pagination import Pagination
+from api.serializers import UserSerializer, SubscriptionSerializer
 
 User = get_user_model()
 
 
-class CustomUserViewSet(UserViewSet):
+class UserViewSet(UserViewSet):
     queryset = User.objects.all()
-    serializer_class = CustomUserSerializer
-    pagination_class = CustomPagination
-
-    def get_permissions(self):
-
-        if (self.action == 'subscriptions'
-           or self.action == 'subscribe' or self.action == 'unsubscribe'):
-            permission_classes = [IsAuthenticated]
-        else:
-            permission_classes = [AllowAny]
-        return [permission() for permission in permission_classes]
+    serializer_class = UserSerializer
+    pagination_class = Pagination
+    permission_classes = (AllowAny,)
 
     @action(detail=False, methods=['get'],
             permission_classes=[IsAuthenticated])
@@ -38,12 +30,13 @@ class CustomUserViewSet(UserViewSet):
                              'to get access to this page.')},
                             status=status.HTTP_401_UNAUTHORIZED)
 
-        serializer = CustomUserSerializer(user, context={'request': request})
+        serializer = UserSerializer(user, context={'request': request})
         return Response(serializer.data)
 
     @action(
         detail=False,
         methods=['get'],
+        permission_classes=[AllowAny]
     )
     def subscriptions(self, request):
         user = request.user
@@ -57,6 +50,7 @@ class CustomUserViewSet(UserViewSet):
     @action(
         detail=True,
         methods=['post'],
+        permission_classes=[IsAuthenticated]
     )
     def subscribe(self, request, **kwargs):
         user = request.user
@@ -70,18 +64,17 @@ class CustomUserViewSet(UserViewSet):
         Subscription.objects.create(user=user, author=author)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-    @action(
-        detail=True,
-        methods=['delete'],
-        permission_classes=[IsAuthenticated]
-    )
+    @subscribe.mapping.delete
     def unsubscribe(self, request, **kwargs):
         user = request.user
         author_id = self.kwargs.get('id')
         author = get_object_or_404(User, id=author_id)
-
-        subscription = get_object_or_404(Subscription,
-                                         user=user,
-                                         author=author)
-        subscription.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        try:
+            subscription = Subscription.objects.get(user=user, author=author)
+            subscription.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except Subscription.DoesNotExist:
+            return Response(
+                {'detail': 'You are not subscribed to this user.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )

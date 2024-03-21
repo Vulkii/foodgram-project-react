@@ -116,14 +116,16 @@ class RecipeSerializer(ModelSerializer):
             raise ValidationError({'tags': 'One or more tags do not exist.'})
 
         if not ingredients_data:
-            raise ValidationError({'ingredients':
-                                   'At least one ingredient must be provided.'})
+            raise ValidationError({
+                'ingredients':
+                'At least one ingredient must be provided.'})
 
         ingredient_ids = [ingredient.get('id')
                           for ingredient in ingredients_data if 'id'
                           in ingredient and 'amount' in ingredient]
         if len(ingredient_ids) != len(set(ingredient_ids)):
-            raise ValidationError({'ingredients': 'Ingredients must be unique.'})
+            raise ValidationError({
+                'ingredients': 'Ingredients must be unique.'})
 
         for ingredient in ingredients_data:
             if 'id' not in ingredient or 'amount' not in ingredient:
@@ -133,7 +135,8 @@ class RecipeSerializer(ModelSerializer):
             if int(ingredient['amount']) <= 0:
                 raise ValidationError({
                     'ingredients':
-                    'The amount for each ingredient must be greater than zero.'})
+                    'The amount for each ingredient must be greater than zero.'
+                })
 
         if (Ingredient.objects.filter(id__in=ingredient_ids).count()
            != len(ingredient_ids)):

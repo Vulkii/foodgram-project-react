@@ -31,4 +31,4 @@ services:
     volumes:
       - static:/static
       - static:/staticfiles/
-      - media:/app/media
+      - media:/media

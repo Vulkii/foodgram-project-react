@@ -1,3 +1,4 @@
+  GNU nano 6.2                   docker-compose.production.yml
 version: '3'
 
 volumes:
@@ -16,7 +17,7 @@ services:
     env_file: .env
     volumes:
       - static:/backend_static
-      - media:/media_static
+      - media:/app/media
   frontend:
     env_file: .env
     image: p1lan/foodgram_frontend
@@ -31,4 +32,4 @@ services:
     volumes:
       - static:/static
       - static:/staticfiles/
-      - media:/media_static
+      - media:/app/media

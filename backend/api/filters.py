@@ -20,7 +20,6 @@ class TagsInRecipeFilter(django_filters.FilterSet):
         if not self.request or not self.request.user.is_authenticated:
             return queryset
 
-        value = value in [True, '1', 1]
         if value:
             return queryset.filter(favourite_related__user=self.request.user)
         return queryset.exclude(favourite_related__user=self.request.user)
@@ -29,7 +28,6 @@ class TagsInRecipeFilter(django_filters.FilterSet):
         if not self.request or not self.request.user.is_authenticated:
             return queryset
 
-        value = value in [True, '1', 1]
         if value:
             return queryset.filter(
                 shoppingcart_related__user=self.request.user)

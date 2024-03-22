@@ -11,8 +11,8 @@ from rest_framework.viewsets import ModelViewSet, ReadOnlyModelViewSet
 
 from .filters import TagsInRecipeFilter, IngredientFilter
 from .pagination import Pagination
-from .permissions import (AllowAnyOrIsAdminOrReadOnly, IsAdminOrReadOnly,
-                          IsAuthorOrReadOnly)
+from .permissions import (AllowAnyOrIsAdminOrReadOnly,
+                          IsAuthorOrAdminOrReadOnly)
 from .serializers import (IngredientSerializer, RecipeForSubSerializer,
                           RecipeSerializer, TagSerializer)
 from recipes.models import Favourite, Ingredient, Recipe, ShoppingCart, Tag
@@ -48,7 +48,7 @@ class IngredientViewSet(ReadOnlyModelViewSet):
 
 class RecipeViewSet(ModelViewSet):
     queryset = Recipe.objects.all()
-    permission_classes = (IsAuthorOrReadOnly | IsAdminOrReadOnly,)
+    permission_classes = (IsAuthorOrAdminOrReadOnly)
     serializer_class = RecipeSerializer
     pagination_class = Pagination
     filter_backends = (DjangoFilterBackend,)
@@ -58,20 +58,7 @@ class RecipeViewSet(ModelViewSet):
         return super().get_queryset()
 
     def destroy(self, request, *args, **kwargs):
-        if not (Recipe.objects.filter(author=request.user).exists()
-                and not request.user.is_staff):
-            return Response({
-                'detail':
-                'You do not have permission to perform this action'},
-                status=status.HTTP_403_FORBIDDEN)
-
         recipe = get_object_or_404(Recipe, pk=kwargs.get('pk'))
-
-        if not (recipe.author == request.user or request.user.is_staff):
-            return Response({
-                'detail':
-                'You do not have permission to perform this action'},
-                status=status.HTTP_403_FORBIDDEN)
 
         return super().destroy(request, *args, **kwargs)
 
@@ -80,12 +67,6 @@ class RecipeViewSet(ModelViewSet):
 
     def update(self, request, *args, **kwargs):
         recipe = self.get_object()
-
-        if not (recipe.author == request.user or request.user.is_staff):
-            return Response({
-                'detail':
-                'You do not have permission to perform this action'},
-                status=status.HTTP_403_FORBIDDEN)
 
         return super().update(request, *args, **kwargs)
 

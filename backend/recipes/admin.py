@@ -1,8 +1,6 @@
 from django.contrib import admin
 import json
 from django import forms
-from django.core.files.base import ContentFile
-from django.utils.html import format_html
 
 from .models import (Favourite, Ingredient, IngredientInRecipe, Recipe,
                      ShoppingCart, Tag)

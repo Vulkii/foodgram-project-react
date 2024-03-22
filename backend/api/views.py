@@ -58,16 +58,12 @@ class RecipeViewSet(ModelViewSet):
         return super().get_queryset()
 
     def destroy(self, request, *args, **kwargs):
-        recipe = get_object_or_404(Recipe, pk=kwargs.get('pk'))
-
         return super().destroy(request, *args, **kwargs)
 
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
 
     def update(self, request, *args, **kwargs):
-        recipe = self.get_object()
-
         return super().update(request, *args, **kwargs)
 
     @action(detail=True, methods=['post'],
